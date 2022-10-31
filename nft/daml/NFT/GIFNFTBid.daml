@@ -1,0 +1,30 @@
+module NFT.GIFNFTBid where
+
+import NFT.GIFNFT
+
+template GIFNFTBid
+    with
+        bidder : Party
+        nftOwner : Party
+        bidAmount : Decimal
+        uniqueGIFId : Text
+    where
+        signatory bidder
+        observer nftOwner
+
+        key (bidder, nftOwner) : (Party, Party)
+        maintainer key._1
+
+        choice GIFNFTBid_Reject : ()
+            controller nftOwner
+                do return ()
+        
+        choice GIFNFTBid_Cancel : ()
+            controller bidder
+                do return ()
+        
+        choice GIFNFTBid_Accept : ContractId GIFNFT
+            controller nftOwner
+                do
+                    exerciseByKey @GIFNFT (nftOwner,nftOwner,uniqueGIFId) GIFNFT_Transfer with newOwner = bidder
+

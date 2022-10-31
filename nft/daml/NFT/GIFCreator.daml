@@ -1,0 +1,25 @@
+module NFT.GIFCreator where
+
+import NFT.GIFNFT
+
+template GIFCreator
+    with
+        gifCreatorId : Text
+        gifCreator : Party
+    where
+        signatory gifCreator
+        key (gifCreator, gifCreatorId) : (Party, Text)
+        maintainer key._1
+    
+        -- ^ GIFCreator will MINT new GIF NFTs
+        nonconsuming choice GIFCreator_MintNFT : ContractId GIFNFT
+            with
+                uniqueGIFId : Text -- ^ unique identifier of this GIF NFT
+                gifUrl : Text -- ^ url pointing to GIF
+                gifCollectionCid : ContractId GIFNFTCollections -- ^ gif collection
+            controller gifCreator 
+                do
+                    gifCollection <- fetch gifCollectionCid
+                    nft <- create GIFNFT with issuer = gifCreator; owner = gifCreator; ..
+                    exercise gifCollectionCid GIFNFTCollections_AddNFT with nft; ..
+                    return nft

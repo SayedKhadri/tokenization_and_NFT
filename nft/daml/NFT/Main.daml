@@ -1,0 +1,45 @@
+module NFT.Main where
+
+import NFT.GIFCreator
+import NFT.GIFNFTBid
+import NFT.GIFNFT
+
+import Daml.Script
+
+test : Script ()
+test = do
+    [nftOwner, bidder1, bidder2, collectionowner] <- mapA allocateParty ["GIF CREATOR", "Bidder 1", "Bidder 2", "Collection Owner"]
+
+    let
+        gifCreatorId = "GIF Creator 001"
+        uniqueGIFId = "0000FDR0934767THD6923982"
+        gifUrl = "https://www.xyz.com/git_id#09090903"
+        collectionId = "GIF NFT Collection"
+
+    -- ^ collection to hold all nft and list of observers who are part of this collection, they will be able to see all the newly minted NFTs added
+    -- to this collections so that they can bid on the NFT's
+    collectionCid <- submit collectionowner do
+        createCmd GIFNFTCollections with collectionOwner = collectionowner; nfts = []; observers = [nftOwner, bidder1, bidder2]; ..
+
+    -- ^ init artist with owner as nftowner
+    submit nftOwner do createCmd GIFCreator with gifCreator = nftOwner; ..
+
+    -- ^ NFT OWNER will now mint new GIFNFT and as part of mint workflow - 
+    --       the newly minted NFT will be added to GIF Collection.
+    submit nftOwner do exerciseByKeyCmd @GIFCreator (nftOwner, gifCreatorId) GIFCreator_MintNFT with gifCollectionCid = collectionCid; ..
+    
+    submit bidder1 do createCmd GIFNFTBid with bidder = bidder1; nftOwner = nftOwner; bidAmount = 100.00; ..
+
+    submit bidder2 do createCmd GIFNFTBid with bidder = bidder2; nftOwner = nftOwner; bidAmount = 88.50; ..    
+    
+   -- submit nftOwner do exerciseByKeyCmd @GIFNFTBid (bidder1, nftOwner) GIFNFTBid_Accept
+
+    -- must fail as nft is transfer to new owner, nft owner can't accept second bid
+    submit nftOwner do exerciseByKeyCmd @GIFNFTBid (bidder2, nftOwner) GIFNFTBid_Accept    
+    
+    pure ()
+
+
+
+
+        

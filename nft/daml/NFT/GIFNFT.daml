@@ -1,0 +1,45 @@
+module NFT.GIFNFT where
+
+template GIFNFTCollections 
+    with
+        collectionId : Text -- ^ Unique collection id
+        collectionOwner : Party
+        nfts : [ContractId GIFNFT]
+        observers : [Party]
+    where
+        signatory collectionOwner
+        observer observers
+        key (collectionOwner, collectionId) : (Party, Text) -- ^ to make sure no other collection exists with same id and owner
+        maintainer key._1
+        
+        choice GIFNFTCollections_AddObserver : ContractId GIFNFTCollections
+            with observer : Party
+            controller collectionOwner 
+                do create this with observers = observer :: observers
+        
+        choice GIFNFTCollections_AddNFT : ContractId GIFNFTCollections
+            with nft : ContractId GIFNFT; gifCreator : Party
+            controller gifCreator
+                do create this with nfts = nft :: nfts
+
+
+template GIFNFT
+    with
+        uniqueGIFId : Text -- ^ unique identifier of this GIF NFT
+        gifUrl : Text -- ^ url pointing to GIF
+        issuer : Party -- ^ issuer of NFT
+        owner : Party -- ^ owner of NFT
+        gifCollection : GIFNFTCollections -- ^ collection to which this nft belongs
+    where
+        signatory issuer, owner
+        observer gifCollection.observers, gifCollection.collectionOwner -- ^ this NFT will be visible to collection owner and all observers of that collection
+
+        key (issuer, owner, uniqueGIFId) : (Party, Party, Text) -- ^ key to uniquely identify the nft
+        maintainer key._1, key._2
+
+        choice GIFNFT_Transfer : ContractId GIFNFT
+            with 
+                newOwner : Party
+            controller owner, newOwner
+                do
+                    create this with owner = newOwner
